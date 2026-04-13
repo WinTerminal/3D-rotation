@@ -822,7 +822,8 @@
                 btn.innerText = `⏳ GIF 初始化...`;
 
                 const workerScripts = [
-                    '/public/gif.worker.js'
+                    '/gif.worker.js',
+                    'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
                 ];
 
                 let currentWorkerIndex = 0;
@@ -918,27 +919,60 @@
 
                 const { fps, duration } = getRecorderOptions();
                 if (canvas.width === 0 || canvas.height === 0) {
-                    alert('Canvas尺寸为0，无法录制');
+                    alert(currentLang === 'zh' ? 'Canvas尺寸为0，无法录制' : 'Canvas size is 0, cannot record');
+                    return;
+                }
+
+                if (!canvas.captureStream) {
+                    alert(currentLang === 'zh' ? '浏览器不支持视频录制' : 'Your browser does not support video recording');
                     return;
                 }
 
                 const stream = canvas.captureStream(fps);
-                const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+                const mimeType = 'video/webm;codecs=vp9';
+                
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    alert(currentLang === 'zh' ? '浏览器不支持 WebM 格式录制' : 'Your browser does not support WebM recording');
+                    return;
+                }
+
+                const mediaRecorder = new MediaRecorder(stream, { mimeType });
                 const chunks = [];
+                const btn = document.getElementById('recordGifConvertHub');
+                const originalText = btn.innerText;
+                
+                btn.style.opacity = '0.6';
+                btn.style.pointerEvents = 'none';
+                btn.innerText = currentLang === 'zh' ? '⏳ 录制中...' : '⏳ Recording...';
+
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.onerror = (err) => {
+                    console.error('MediaRecorder error:', err);
+                    btn.style.opacity = '1';
+                    btn.style.pointerEvents = 'auto';
+                    btn.innerText = originalText;
+                    alert(currentLang === 'zh' ? '录制过程中发生错误' : 'Error during recording');
+                };
+                
                 mediaRecorder.onstop = async () => {
-                    const webmBlob = new Blob(chunks, { type: 'video/webm' });
-                    const formData = new FormData();
-                    formData.append('file', webmBlob, 'recording.webm');
-                    formData.append('target_format', 'gif');
-                    // 将 API Key 放在请求头中传递给 Serverless 函数（或通过其他安全方式）
+                    btn.innerText = currentLang === 'zh' ? '⏳ 转换中...' : '⏳ Converting...';
                     try {
+                        const webmBlob = new Blob(chunks, { type: 'video/webm' });
+                        const formData = new FormData();
+                        formData.append('file', webmBlob, 'recording.webm');
+                        formData.append('target_format', 'gif');
+
                         const response = await fetch('/api/convert', {
                             method: 'POST',
-                            headers: { 'X-API-Key': apiKey }, // 通过自定义头传递
+                            headers: { 'X-API-Key': apiKey },
                             body: formData
                         });
-                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(errorText || `HTTP ${response.status}`);
+                        }
+
                         const gifBlob = await response.blob();
                         const url = URL.createObjectURL(gifBlob);
                         const a = document.createElement('a');
@@ -948,9 +982,14 @@
                         URL.revokeObjectURL(url);
                     } catch (err) {
                         console.error('ConvertHub 转换失败:', err);
-                        alert('转换失败，请检查 API Key 和网络，或尝试本地 GIF 按钮。');
+                        alert(currentLang === 'zh' ? '转换失败，请检查 API Key 和网络，或尝试本地 GIF 按钮。错误详情: ' + err.message : 'Conversion failed. Please check your API Key and network, or try the local GIF button. Error: ' + err.message);
+                    } finally {
+                        btn.style.opacity = '1';
+                        btn.style.pointerEvents = 'auto';
+                        btn.innerText = originalText;
                     }
                 };
+
                 mediaRecorder.start();
                 setTimeout(() => mediaRecorder.stop(), duration * 1000);
             }

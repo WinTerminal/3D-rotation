@@ -1,5 +1,8 @@
 import Busboy from 'busboy';
-import { Readable } from 'stream';
+import { Readable, pipeline } from 'stream';
+import { promisify } from 'util';
+
+const pipelineAsync = promisify(pipeline);
 
 export const config = {
   api: {
@@ -25,7 +28,6 @@ export default async function handler(req, res) {
       file.on('data', data => chunks.push(data));
       file.on('end', () => {
         fileBuffer = Buffer.concat(chunks);
-        // 不在这里 resolve
       });
       file.on('error', reject);
     });
@@ -36,6 +38,7 @@ export default async function handler(req, res) {
         resolve();
       }
     });
+    busboy.on('error', reject);
   });
 
   req.pipe(busboy);
@@ -43,7 +46,8 @@ export default async function handler(req, res) {
   try {
     await filePromise;
   } catch (err) {
-    return res.status(400).json({ error: 'File parsing failed' });
+    console.error('File parsing error:', err);
+    return res.status(400).json({ error: 'File parsing failed: ' + err.message });
   }
 
   if (!fileBuffer) {
@@ -51,9 +55,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const formData = new FormData();
-    const blob = new Blob([fileBuffer], { type: 'video/webm' });
-    formData.append('file', blob, 'recording.webm');
+    const formData = new (globalThis.FormData || require('formdata-node').FormData)();
+    formData.append('file', new Blob([fileBuffer], { type: 'video/webm' }), 'recording.webm');
     formData.append('target_format', 'gif');
 
     const convertRes = await fetch('https://api.converthub.com/v2/convert', {
@@ -66,14 +69,23 @@ export default async function handler(req, res) {
 
     if (!convertRes.ok) {
       const errorText = await convertRes.text();
-      return res.status(convertRes.status).json({ error: errorText });
+      console.error('Convert API error:', convertRes.status, errorText);
+      return res.status(convertRes.status).json({ error: errorText || 'Conversion failed' });
     }
 
     res.setHeader('Content-Type', 'image/gif');
-    // 将 Web ReadableStream 转换为 Node 流并 pipe
-    Readable.fromWeb(convertRes.body).pipe(res);
+    res.setHeader('Content-Disposition', 'attachment; filename="converted.gif"');
+
+    if (Readable.fromWeb && convertRes.body) {
+      await pipelineAsync(Readable.fromWeb(convertRes.body), res);
+    } else if (convertRes.body && typeof convertRes.body.pipe === 'function') {
+      await pipelineAsync(convertRes.body, res);
+    } else {
+      const buffer = await convertRes.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    }
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Conversion error:', err);
+    res.status(500).json({ error: 'Internal server error: ' + err.message });
   }
 }
