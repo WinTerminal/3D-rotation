@@ -807,7 +807,7 @@
             function startGifRecording() {
                 const { fps, duration } = getRecorderOptions();
                 if (canvas.width === 0 || canvas.height === 0) {
-                    alert('Canvas尺寸为0，无法录制GIF');
+                    alert(currentLang === 'zh' ? 'Canvas尺寸为0，无法录制GIF' : 'Canvas size is 0, cannot record GIF');
                     return;
                 }
                 const gifFps = Math.min(fps, 24);
@@ -818,7 +818,7 @@
                 const originalText = btn.innerText;
                 btn.style.opacity = '0.6';
                 btn.style.pointerEvents = 'none';
-                btn.innerText = `⏳ GIF 初始化...`;
+                btn.innerText = currentLang === 'zh' ? `⏳ GIF 初始化...` : `⏳ GIF initializing...`;
 
                 const workerScripts = [
                     '/gif.worker.js',
@@ -832,7 +832,7 @@
 
                 function createGIF(workerIndex) {
                     if (workerIndex >= workerScripts.length) {
-                        throw new Error('所有 worker CDN 均不可用');
+                        throw new Error(currentLang === 'zh' ? '所有 worker CDN 均不可用' : 'All worker CDNs are unavailable');
                     }
                     return new GIF({
                         workers: 2,
@@ -843,19 +843,20 @@
                     });
                 }
 
-                try {
-                    gif = createGIF(0);
-                } catch (e) {
-                    console.error('GIF 初始化失败:', e);
-                    alert('GIF 初始化失败，请检查网络或刷新重试');
-                    resetButton();
-                    return;
-                }
-
                 function resetButton() {
                     btn.style.opacity = '1';
                     btn.style.pointerEvents = 'auto';
                     btn.innerText = originalText;
+                }
+
+                try {
+                    gif = createGIF(0);
+                } catch (e) {
+                    console.error('GIF 初始化失败:', e);
+                    const errorMsg = currentLang === 'zh' ? '本地 GIF 录制失败，请检查网络连接，或尝试使用 ConvertHub GIF 按钮' : 'Local GIF recording failed. Please check your network connection, or try the ConvertHub GIF button';
+                    alert(errorMsg);
+                    resetButton();
+                    return;
                 }
 
                 gif.on('error', (err) => {
@@ -869,12 +870,14 @@
                             gif = newGif;
                             console.log(`切换到 worker: ${workerScripts[currentWorkerIndex]}`);
                         } catch (e) {
-                            alert('所有 worker 均不可用，请检查网络');
+                            const errorMsg = currentLang === 'zh' ? '所有 worker 均不可用，请检查网络，或尝试使用 ConvertHub GIF 按钮' : 'All workers are unavailable. Please check your network, or try the ConvertHub GIF button';
+                            alert(errorMsg);
                             clearInterval(interval);
                             resetButton();
                         }
                     } else {
-                        alert('GIF 录制失败: 所有 worker 均不可用');
+                        const errorMsg = currentLang === 'zh' ? 'GIF 录制失败: 所有 worker 均不可用，请尝试使用 ConvertHub GIF 按钮' : 'GIF recording failed: All workers are unavailable. Please try the ConvertHub GIF button';
+                        alert(errorMsg);
                         clearInterval(interval);
                         resetButton();
                     }
@@ -894,7 +897,7 @@
                     try {
                         gif.addFrame(canvas, { copy: true, delay: 1000 / gifFps });
                         captured++;
-                        btn.innerText = `⏳ GIF ${captured}/${totalFrames}`;
+                        btn.innerText = currentLang === 'zh' ? `⏳ GIF ${captured}/${totalFrames}` : `⏳ GIF ${captured}/${totalFrames}`;
                         if (captured >= totalFrames) {
                             clearInterval(interval);
                             gif.render();
