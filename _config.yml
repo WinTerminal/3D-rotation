@@ -1,5 +1,5 @@
 # GitHub Pages 配置
-baseurl: ""
+baseurl: "/3D-rotation"
 url: "https://winterminal.github.io"
 
 # 构建设置
