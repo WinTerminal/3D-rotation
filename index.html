@@ -911,10 +911,6 @@
             // --- 新增：ConvertHub GIF 录制 (通过 Serverless 代理) ---
             async function startGifConvertHub() {
                 const apiKey = document.getElementById('convertHubApiKey').value.trim();
-                if (!apiKey) {
-                    alert(currentLang === 'zh' ? '请输入 ConvertHub API Key' : 'Please enter your ConvertHub API Key');
-                    return;
-                }
 
                 const { fps, duration } = getRecorderOptions();
                 if (canvas.width === 0 || canvas.height === 0) {
@@ -963,7 +959,6 @@
 
                         const response = await fetch('/api/convert', {
                             method: 'POST',
-                            headers: { 'X-API-Key': apiKey },
                             body: formData
                         });
 
