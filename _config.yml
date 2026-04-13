@@ -1,0 +1,31 @@
+# GitHub Pages 配置
+baseurl: ""
+url: "https://winterminal.github.io"
+
+# 构建设置
+build:
+  output: .
+
+# 插件
+plugins:
+  - jekyll-sitemap
+
+# 排除文件
+exclude:
+  - .github
+  - node_modules
+  - package.json
+  - package-lock.json
+  - README.md
+  - README-zh.md
+  - LICENSE
+  - vercel.json
+  - test
+
+# 包含文件
+include:
+  - index.html
+  - public/
+  - api/
+  - screenshot.png
+  - screenshot-zh.png
