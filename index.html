@@ -341,7 +341,7 @@
 
         <!-- 材质高级面板（保持不变） -->
         <div class="collapse-section">
-            <div class="collapse-toggle" onclick="document.getElementById('facePanel').style.display = document.getElementById('facePanel').style.display === 'none' ? 'grid' : 'none'" data-i18n="toggleMaterial">▼ 材质自定义 (点击展开/折叠)</div>
+            <div class="collapse-toggle" id="collapseToggle" data-i18n="toggleMaterial">▼ 材质自定义 (点击展开/折叠)</div>
             
             <!-- 纹理模式选择 -->
             <div class="flex-row" style="justify-content: flex-start;">
@@ -537,13 +537,12 @@
                 stars.visible = !checked;
             });
 
-            function animate() {
-                requestAnimationFrame(animate);
-                cube.rotation.y += speed;
-                stars.rotation.y += 0.0002;
+            (function animateLoop() {
+                requestAnimationFrame(animateLoop);
+                if (cube) cube.rotation.y += speed;
+                if (stars) stars.rotation.y += 0.0002;
                 renderer.render(scene, camera);
-            }
-            animate();
+            })();
 
             window.addEventListener('resize', () => {
                 const w = canvas.clientWidth;
@@ -999,6 +998,19 @@
             document.getElementById('recordMp4Btn').addEventListener('click', () => startRecording('mp4'));
             document.getElementById('recordGifBtn').addEventListener('click', startGifRecording);
             document.getElementById('recordGifConvertHub').addEventListener('click', startGifConvertHub);
+
+            // 材质面板折叠功能
+            document.getElementById('collapseToggle').addEventListener('click', () => {
+                const facePanel = document.getElementById('facePanel');
+                const toggle = document.getElementById('collapseToggle');
+                if (facePanel.style.display === 'none') {
+                    facePanel.style.display = 'grid';
+                    toggle.innerText = (currentLang === 'zh' ? '▼ 材质自定义 (点击展开/折叠)' : '▼ Material Settings (click to expand/collapse)');
+                } else {
+                    facePanel.style.display = 'none';
+                    toggle.innerText = (currentLang === 'zh' ? '▶ 材质自定义 (点击展开/折叠)' : '▶ Material Settings (click to expand/collapse)');
+                }
+            });
 
             // 语言切换事件
             document.getElementById('langZhBtn').addEventListener('click', () => setLanguage('zh'));
