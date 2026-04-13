@@ -15,9 +15,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = req.headers['x-api-key'];
+  const apiKey = process.env.CONVERTHUB_API_KEY;
   if (!apiKey) {
-    return res.status(400).json({ error: 'Missing API Key' });
+    return res.status(400).json({ error: 'Missing CONVERTHUB_API_KEY environment variable' });
   }
 
   const busboy = Busboy({ headers: req.headers });
@@ -76,14 +76,9 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'image/gif');
     res.setHeader('Content-Disposition', 'attachment; filename="converted.gif"');
 
-    if (Readable.fromWeb && convertRes.body) {
-      await pipelineAsync(Readable.fromWeb(convertRes.body), res);
-    } else if (convertRes.body && typeof convertRes.body.pipe === 'function') {
-      await pipelineAsync(convertRes.body, res);
-    } else {
-      const buffer = await convertRes.arrayBuffer();
-      res.send(Buffer.from(buffer));
-    }
+    // 使用缓冲方式确保完整返回 GIF 数据
+    const buffer = await convertRes.arrayBuffer();
+    res.send(Buffer.from(buffer));
   } catch (err) {
     console.error('Conversion error:', err);
     res.status(500).json({ error: 'Internal server error: ' + err.message });
